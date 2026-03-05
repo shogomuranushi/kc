@@ -1,34 +1,34 @@
 # kc
 
-`.env` にシークレットを書かない。Keychain に預けて、Touch ID で守る。
+Stop writing secrets in `.env`. Let Keychain guard them with Touch ID.
 
-## 課題
+## Problem
 
-- `.env` にAPIキーを平文で書いている
-- `.gitignore` 頼みで、事故れば即漏洩
-- チームで `.env` を Slack やメモで共有している
-- AI エージェント（Claude Code, Cline 等）にシークレットへの無制限アクセスを与えたくない
+- API keys stored as plaintext in `.env` files
+- One `.gitignore` mistake away from leaking secrets
+- Sharing `.env` files over Slack or notes
+- AI agents (Claude Code, Cline, etc.) get unrestricted access to your secrets
 
-## 解決
+## Solution
 
-`kc` は macOS Keychain / Windows Credential Manager / Linux Secret Service をバックエンドにしたシークレット管理CLI。
-`.env` には `kc://service/key` の参照だけを書き、実行時に Keychain から展開する。
-シークレット取得時に Touch ID / パスワード認証が走るため、人間の承認なしにはアクセスできない。
+`kc` is a secret management CLI backed by macOS Keychain / Windows Credential Manager / Linux Secret Service.
+Your `.env` contains only `kc://service/key` references — secrets are resolved from the Keychain at runtime.
+Touch ID / password authentication is required to retrieve secrets, so nothing is accessed without human approval.
 
 ```bash
-# .env（これはgitコミットできる）
+# .env (safe to commit to git)
 ANTHROPIC_API_KEY=kc://anthropic/api_key
 AWS_SECRET_ACCESS_KEY=kc://aws/secret_access_key
 PORT=3000
 ```
 
 ```bash
-# kc 経由で起動するだけ（Touch ID が走る）
+# Just run commands through kc (Touch ID prompt appears)
 kc claude
 kc npm run dev
 ```
 
-## インストール
+## Install
 
 ```bash
 # macOS (Apple Silicon)
@@ -41,17 +41,17 @@ curl -fsSL https://github.com/shogomuranushi/kc/releases/latest/download/kc-darw
 curl -fsSL https://github.com/shogomuranushi/kc/releases/latest/download/kc-linux-amd64 -o /usr/local/bin/kc && chmod +x /usr/local/bin/kc
 ```
 
-## 使い方
+## Usage
 
-### 1. シークレットを登録
+### 1. Store secrets
 
 ```bash
-kc set anthropic api_key sk-ant-xxxx    # 引数で渡す
-kc set github token                      # プロンプト入力（非エコー）
-echo "sk-xxx" | kc set stripe secret_key # パイプ
+kc set anthropic api_key sk-ant-xxxx    # Pass as argument
+kc set github token                      # Interactive prompt (no echo)
+echo "sk-xxx" | kc set stripe secret_key # Pipe
 ```
 
-### 2. `.env` に参照を書く
+### 2. Write references in `.env`
 
 ```bash
 ANTHROPIC_API_KEY=kc://anthropic/api_key
@@ -59,51 +59,51 @@ GITHUB_TOKEN=kc://github/token
 PORT=3000
 ```
 
-### 3. コマンドを実行
+### 3. Run commands
 
 ```bash
-kc claude                    # .env を自動検索して展開
+kc claude                    # Auto-discovers .env and resolves secrets
 kc npm run dev
 kc docker compose up
-kc run --env-file .env.prod -- npm start  # .env ファイルを明示指定
+kc run --env-file .env.prod -- npm start  # Explicit .env file
 ```
 
-### 既存の `.env` を移行する
+### Migrate existing `.env`
 
 ```bash
-kc migrate            # カレントディレクトリから .env を自動検索
-kc migrate .env.local # ファイル指定
+kc migrate            # Auto-discovers .env in current directory
+kc migrate .env.local # Specify file
 ```
 
-プレーンテキストの値を対話式で Keychain に移行し、`.env` を `kc://` 参照に書き換える。
+Interactively moves plaintext values into Keychain and rewrites `.env` with `kc://` references.
 
-### その他のコマンド
+### Other commands
 
 ```bash
-kc get github token          # 値を stdout に出力（パイプ可）
-kc get github token | pbcopy # クリップボードにコピー
-kc delete github token       # 削除
-kc list                      # 全件一覧
-kc list aws                  # サービスでフィルタ
+kc get github token          # Print value to stdout (pipe-friendly)
+kc get github token | pbcopy # Copy to clipboard
+kc delete github token       # Delete a secret
+kc list                      # List all secrets
+kc list aws                  # Filter by service
 ```
 
-## 設計
+## Design
 
-- **stdout は値のみ、メッセージはすべて stderr** → パイプで安全に使える
-- **`.env` は上方向に自動検索** → サブディレクトリからでも動く
-- **`kc <command>`** → `set`/`get`/`delete`/`list`/`run`/`migrate` 以外はすべて外部コマンドとして実行
-- **`kc://service/key`** → service/key は `[a-zA-Z0-9_.-]` のみ許可
-- **Keychain のサービス名** → `kc-cli:` プレフィックスで名前空間を分離
+- **stdout is values only, all messages go to stderr** — safe for piping
+- **`.env` is auto-discovered upward** — works from subdirectories
+- **`kc <command>`** — anything not `set`/`get`/`delete`/`list`/`run`/`migrate` is executed as an external command
+- **`kc://service/key`** — service/key allows `[a-zA-Z0-9_.-]` only
+- **Keychain service name** — namespaced with `kc-cli:` prefix
 
-## 脅威モデル
+## Threat model
 
-| 防げること | 防げないこと |
+| What it prevents | What it doesn't prevent |
 |---|---|
-| `.env` の静的スキャンによる漏洩 | プロセスに渡った後の環境変数の読み取り |
-| 人間の承認なしにシークレットを取り出すこと | 実行中プロセス内での悪意あるコードによる読み取り |
-| `.env` をリポジトリにコミットしての漏洩 | |
+| Leaking secrets via static `.env` scanning | Reading env vars from a running process |
+| Accessing secrets without human approval | Malicious code reading env vars within a running process |
+| Accidentally committing secrets to git | |
 
-## ビルド
+## Build
 
 ```bash
 go build -o kc .
