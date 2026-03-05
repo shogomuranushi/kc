@@ -8,6 +8,7 @@ Stop writing secrets in `.env`. Let Keychain guard them with Touch ID.
 - One `.gitignore` mistake away from leaking secrets
 - Sharing `.env` files over Slack or notes
 - AI agents (Claude Code, Cline, etc.) get unrestricted access to your secrets
+- A compromised dependency or malicious supply chain code can silently read `.env` at build time
 
 ## Solution
 
