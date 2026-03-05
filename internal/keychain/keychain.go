@@ -71,7 +71,9 @@ func List(service string) ([]string, error) {
 
 // --- registry: tracks service/key pairs in a JSON file ---
 
-func registryPath() string {
+var registryPathFunc = defaultRegistryPath
+
+func defaultRegistryPath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		dir = os.TempDir()
@@ -80,7 +82,7 @@ func registryPath() string {
 }
 
 func registryLoad() []string {
-	data, err := os.ReadFile(registryPath())
+	data, err := os.ReadFile(registryPathFunc())
 	if err != nil {
 		return nil
 	}
@@ -90,7 +92,7 @@ func registryLoad() []string {
 }
 
 func registrySave(entries []string) {
-	p := registryPath()
+	p := registryPathFunc()
 	_ = os.MkdirAll(filepath.Dir(p), 0700)
 	data, _ := json.Marshal(entries)
 	_ = os.WriteFile(p, data, 0600)
