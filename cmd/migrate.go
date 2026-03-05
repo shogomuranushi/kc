@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -90,20 +89,13 @@ func RunMigrate(args []string) int {
 		entries[i].IsKCRef = true
 	}
 
-	// Backup original
-	backupPath := envFilePath + ".bak"
-	if err := copyFile(envFilePath, backupPath); err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] Failed to create backup: %s\n", err)
-		return 1
-	}
-
 	// Write updated .env
 	if err := dotenv.Write(envFilePath, entries); err != nil {
 		fmt.Fprintf(os.Stderr, "[ERROR] Failed to write .env: %s\n", err)
 		return 1
 	}
 
-	fmt.Fprintf(os.Stderr, ".env updated. Original backed up to %s\n", backupPath)
+	fmt.Fprintln(os.Stderr, ".env updated.")
 	return 0
 }
 
@@ -155,19 +147,3 @@ func suggestKey(envKey string) string {
 	return key
 }
 
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	return err
-}
