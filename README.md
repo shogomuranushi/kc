@@ -2,8 +2,18 @@
 
 `.env` にシークレットを書かない。Keychain に預けて、Touch ID で守る。
 
+## 課題
+
+- `.env` にAPIキーを平文で書いている
+- `.gitignore` 頼みで、事故れば即漏洩
+- チームで `.env` を Slack やメモで共有している
+- AI エージェント（Claude Code, Cline 等）にシークレットへの無制限アクセスを与えたくない
+
+## 解決
+
 `kc` は macOS Keychain / Windows Credential Manager / Linux Secret Service をバックエンドにしたシークレット管理CLI。
 `.env` には `kc://service/key` の参照だけを書き、実行時に Keychain から展開する。
+シークレット取得時に Touch ID / パスワード認証が走るため、人間の承認なしにはアクセスできない。
 
 ```bash
 # .env（これはgitコミットできる）
